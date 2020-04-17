@@ -49,6 +49,8 @@ app.get('/location', (request, response) => {
 });
 app.get('/weather', weathHandler);
 app.get('/trails', trailhandler);
+app.get('/movies', movieHandler);
+app.get('/yelp', yelpHandler);
 
 function weathHandler(request, response) {
   superagent(
@@ -76,6 +78,34 @@ function trailhandler(request, response) {
       response.status(200).json(obj1);
     })
     .catch((error1)=> errorHandler(error1, request, response));
+}
+function movieHandler(request, response) {
+  superagent(`https://api.themoviedb.org/3/search/movie?api_key=${process.env.MOVIE_API_KEY}&query=${request.query.search_query}`)
+    .then((movieData) => {
+      const movieSum = movieData.body.results.map((movies) => {
+        return new Movie(movies);
+
+      });
+      response.status(200).json(movieSum);
+
+    })
+    .catch(err => errorHandler(err, request, response));
+
+}
+
+function yelpHandler(request, response) {
+  superagent(`https://api.yelp.com/v3/businesses/search?location=${request.query.search_query}`)
+    .set({ 'Authorization': `Bearer ${process.env.YELP_API_KEY}` })
+    .then(yelpData => {
+      console.log('yelp', yelpData);
+
+      const yelpSummaries = yelpData.body.businesses.map((yelps) => {
+        return new Yelp(yelps);
+      });
+      response.status(200).json(yelpSummaries);
+
+    })
+    .catch(err => errorHandler(err, request, response));
 
 }
 
@@ -111,6 +141,24 @@ function Trail(val) {
   this.condition_time = val.conditionDate.substring(11);
 
 }
+function Movie(movie) {
+  this.title = movie.title;
+  this.overview = movie.overview;
+  this.average_votes = movie.vote_average;
+  this.total_votes = movie.vote_count;
+  this.image_url = `https://image.tmdb.org/t/p/w500${movie.poster_path}`;
+  this.popularity = movie.popularity;
+  this.released_on = movie.release_date;
+}
+
+function Yelp(yelp) {
+  this.name = yelp.name;
+  this.image_url = yelp.image_url;
+  this.price = yelp.price;
+  this.rating = yelp.rating;
+  this.url = yelp.url;
+}
+
 
 function errorHandler( error ,request, response) {
   response.status(500).send(error);
